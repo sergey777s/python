@@ -9,20 +9,14 @@
              Очікуваний результат, якщо введено "100":
 Expected Output: [(10, 20, "100"), (40, 50, 60, "100"), (80, "100"), ("100",)]
 '''
-'''tupleFromUs = ("start")
-lstOfTuples = list()
-while len(tupleFromUs):
-    tupleFromUs = tuple(input("input values in tuples, empty for finish: "))
-    lstOfTuples.append(list(tupleFromUs))
-lstOfTuples.pop()'''
 lstOfTuples = [(10, 20, 40), (40, 50, 60, 70), (80, 90), (1000,)]
 valueForChange = int(input("insert value for change: "))
+i = 0
 finListOfTuples = list()
-tmpList = list()
 for t in lstOfTuples:
-    tmpList.append(list(t)[:-1])
-    tmpList[0].append(valueForChange)
-    finListOfTuples.append(tuple(tmpList[0]))
-    tmpList.clear()
+    finListOfTuples.append(list(t)[:-1])
+    finListOfTuples[i].append(valueForChange)
+    finListOfTuples[i] = tuple(finListOfTuples[i])
+    i += 1
 print("your list is : ")
 print(finListOfTuples)
