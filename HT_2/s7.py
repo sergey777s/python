@@ -1,6 +1,16 @@
-number=int(input("write number to generate directory: "))
-generDic=dict()
-for i in range(1,number+1):
-    generDic[i]=i*i
-print("Your dict is: ")
-print(generDic)
+'''
+7. Написати скрипт, який отримає максимальне і мінімальне значення із словника. 
+Дані захардкодити.
+                Приклад словника (можете використовувати свій):
+                dict_1 = {1: 10, 2: 20, 3: 30, 4: 40, 5: 50, 6: 60}
+                Вихідний результат:
+                MIN: 10
+                MAX: 60
+'''
+dic = {1: 10, 2: 20, 3: 30, 4: 40, 5: 50, 6: '60'}
+for i in dic:
+    dic[i] = int(dic[i])
+dicMin = min(dic.values())
+dicMax = max(dic.values())
+print("min=" + str(dicMin))
+print("max=" + str(dicMax))
