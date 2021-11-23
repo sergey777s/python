@@ -6,13 +6,13 @@
 
 
 def season(month):
-    if month in range(1, 2) or month == 12:
+    if month in (1, 2) or month == 12:
         print("winter")
-    if month in range(3, 5):
+    if month in (3, 4, 5):
         print("spring")
-    if month in range(6, 8):
+    if month in (6, 7, 8):
         print("summer")
-    if month in range(9, 11):
+    if month in (9, 10, 11):
         print("autumn")
 
 
