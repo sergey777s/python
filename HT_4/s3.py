@@ -20,7 +20,7 @@ def is_prime(digit):
 
 
 d = int(input("input from 0 to 1000 for check on simple: "))
-if d in range(0, 1000 + 1):
+if 0 <= d <= 1000:
     print(is_prime(d))
 else:
     print("not in range")
