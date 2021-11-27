@@ -6,7 +6,6 @@
 
 
 def is_prime(digit):
-    digit = int(digit)
     if digit == 2:
         return True
     elif digit == 1:

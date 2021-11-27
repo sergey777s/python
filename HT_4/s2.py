@@ -11,26 +11,22 @@
 
 
 def getMoneyFromClient():
-    money = float()
-    money = input("input sum of deposit: ")
+    money = float(input("input sum of deposit: "))
     return money
 
 
 def getYearsOfDeposit():
-    years = int()
-    years = input("How meny years you want keep your money:")
+    years = int(input("How meny years you want keep your money:"))
     return years
 
 
 def getPercent():
-    percent = input("choose your percent, default is ten: ") or "10"
-    percent = float(percent)
+    percent = float(input("choose your percent, default is ten: ") or "10")
     percent = percent * 0.01
     return percent
 
 
 def bank(money, years, percent):
-    money = int(money)
     for year in range(int(years)):
         money += float(money) * float(percent)
     return round(money, 2)

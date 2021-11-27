@@ -5,14 +5,13 @@
 
 
 def fibonacci(end):
-    stop = end
     for cur in range(1, end):
         if cur == 1:
             prev = 0
             nex = 1
             print(cur)
         cur = prev + nex
-        if cur > stop:
+        if cur > end:
             break
         print(cur)
         prev, nex = nex, cur

@@ -8,7 +8,7 @@ def sumOfDuplicates(elements):
     dictOfDupl = dict()
     temp = list()
     for el in elements:
-        if str(type(el)) == "<class 'list'>":
+        if isinstance(el, list):
             temp.extend([el[i] for i in range(len(el))])
         else:
             temp.append(el)

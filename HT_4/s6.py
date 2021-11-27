@@ -4,18 +4,11 @@
 """
 
 
-def isDigitPositive(digit):
-    if digit > 0:
-        return True
-    else:
-        return False
-
-
 def operate():
     digit = int(input("input digit to operate: "))
     if digit == 0:
         return digit
-    elif isDigitPositive(digit):
+    elif digit > 0:
         return digit ** 2
     else:
         return digit + 100

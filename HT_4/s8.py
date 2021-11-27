@@ -19,8 +19,6 @@ def isShiftRight(shift):
 def loopOfShift(listOfEl, shiftSize):
     listOfEl = list(listOfEl)
     shiftSize = int(shiftSize)
-    tempEnd = list()
-    tempStart = list()
     if isShiftRight(shiftSize):
         tempEnd = listOfEl[:len(listOfEl) - shiftSize]
         tempStart = listOfEl[len(listOfEl) - shiftSize:]
