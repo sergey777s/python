@@ -31,16 +31,39 @@
       - далі - фантазія і креатив :)
 """
 """
- додати функціонал для "інкасації" - тобто щоб можна було банкомат ініціювати 
- купюрами певного номіналу і з певною кількістю. Також при знятті грошей сума 
- повинна видаватись тільки в межах існуючих купюр (ну і відповідно ц кількість 
- в банкоматі повинна зменшуватись). Оскільки цей алгоритм можна зробити 
- "неправильним" способом - перевірка його буде відбуватись видачею суми в 160 
- із наявними купюрами 20, 50, 100, 200 (десяток немає).
+1. Доповніть програму-банкомат з попереднього завдання таким функціоналом, як 
+використання банкнот.
+   Отже, у банкомата повинен бути такий режим як "інкассація", за допомогою 
+   якого в нього можна "загрузити" деяку кількість банкнот (вибирається 
+   номінал і кількість).
+   Зняття грошей з банкомату повинно відбуватись в межах наявних банкнот за 
+   наступним алгоритмом - видається мінімальна кількість банкнот наявного 
+   номіналу. P.S. Будьте обережні з використанням "жадібного" алгоритму 
+   (коли вибирається спочатку найбільша банкнота, а потім - наступна 
+   за розміром і т.д.) - в деяких випадках він працює неправильно або 
+   не працює взагалі. Наприклад, якщо треба видати 160 грн., а в наявності є 
+   банкноти номіналом 20, 50, 100, 500,  банкомат не зможе видати суму 
+   (бо спробує видати 100 + 50 + (невідомо), а потрібно було 100 + 20 + 20 + 20 ).
+
+   Особливості реалізації:
+   - перелік купюр: 10, 20, 50, 100, 200, 500, 1000;
+   - у одного користувача повинні бути права "інкасатора". Відповідно і у 
+   нього буде своє власне меню із пунктами:
+     - переглянути наявні купюри;
+     - змінити кількість купюр;
+   - видача грошей для користувачів відбувається в межах наявних купюр;
+   - якщо гроші вносяться на рахунок - НЕ ТРЕБА їх розбивати і вносити в 
+   банкомат - не ускладнюйте собі життя, та й, наскільки я розумію, банкомати 
+   все, що в нього входить, відкладає в окрему касету.
+2. Для кращого засвоєння - перед написанням коду із п.1 - видаліть код для 
+старої програми-банкомату і напишіть весь код наново (завдання на самоконтроль).
+   До того ж, скоріш за все, вам прийдеться і так багато чого переписати.
 """
 
 import os, datetime, json, csv
 from json.decoder import JSONDecodeError
+atm = dict()
+cassetteNum = (1, 2, 3, 4)
 
 
 def cleanScreen():
@@ -164,7 +187,7 @@ def operationToJson(user, operation, amount):
     elif user == "admin":
         balance = getBalanceATM()
     else:
-        balance = getBalance(user)        
+        balance = getBalance(user)
     toJson = {datetime.datetime.now().isoformat():
               {"operation": operation,
               "amount": amount,
@@ -191,6 +214,85 @@ def addMoney(username):
     operationToJson(username, "added money", moneyFromUs)
 
 
+def changeUserBalance(username, curBalance, amount):
+    with open(f"{username}_balance.data", 'w') as file:
+        file.write(str(curBalance - amount))
+    print(f"you has got {amount} UAH")
+    operationToJson(username, "got money", amount)
+
+
+def getDictOfMoneyToPresent(cashNeedToPresent, listOfBillsInATM):
+    listOfBillsInATM.sort(reverse=True)
+    present = dict.fromkeys(listOfBillsInATM)
+
+    def isCanPresentAll(cashToPresent, listOfDenoms):
+        for i in listOfDenoms:
+            if cashToPresent % i == 0:
+                return True
+        return False
+
+    curLoop = 0
+    try:
+        for curDen in listOfBillsInATM:
+            if curLoop == len(listOfBillsInATM)-1 and cashNeedToPresent % curDen == 0:
+                present[curDen] = int(cashNeedToPresent / curDen)
+                cashNeedToPresent = 0
+                break
+            if cashNeedToPresent == 0:
+                break
+            if cashNeedToPresent // curDen > 0 and isCanPresentAll(cashNeedToPresent - curDen, listOfBillsInATM[curLoop+1:]):
+                present[curDen] = cashNeedToPresent // curDen
+                cashNeedToPresent = cashNeedToPresent % curDen
+            elif cashNeedToPresent // curDen > 0 and (isCanPresentAll(cashNeedToPresent - listOfBillsInATM[curLoop], listOfBillsInATM[curLoop+1:]) or isCanPresentAll(cashNeedToPresent - listOfBillsInATM[curLoop] - listOfBillsInATM[curLoop + 1], listOfBillsInATM[curLoop+2:])):
+                present[curDen] = cashNeedToPresent // curDen
+                cashNeedToPresent = cashNeedToPresent % curDen
+                present[listOfBillsInATM[curLoop-1]] = cashNeedToPresent // curDen
+                cashNeedToPresent = cashNeedToPresent % listOfBillsInATM[curLoop-1]
+            elif cashNeedToPresent % curDen == 0:
+                present[curDen] = int(cashNeedToPresent / curDen)
+                cashNeedToPresent = 0
+            curLoop += 1
+    except IndexError:
+        for i in present.keys():
+            present[i] = 0
+    for i in present.keys():
+        if present[i] == None:
+            present[i] = 0
+    return present
+
+
+def storeATMbillsToFile(atmDict):
+    with open("atm", 'w') as file:
+        atmWriter = csv.DictWriter(file, fieldnames=list(atmDict.keys()), delimiter='|')
+        atmWriter.writeheader()
+        atmWriter.writerow(atmDict)
+
+
+def getMoneyFromATMtoClient(money):
+    billsAmounts = dict()
+    with open("atm", 'r') as file:
+        csvReader = csv.DictReader(file, delimiter='|')
+        billsAmounts = dict(next(csvReader))
+    billAmmATM = dict()
+    for key, val in billsAmounts.items():
+        billAmmATM[int(key)] = int(val)
+    denomsATM = list(billAmmATM.keys())
+    dictOfMoneyToClient = getDictOfMoneyToPresent(money, denomsATM)
+    if sum(dictOfMoneyToClient.values()) == 0:
+        return False
+    else:
+        toATMfile = {key:billAmmATM[key]-dictOfMoneyToClient[key] for key in billAmmATM}
+        for amount in toATMfile.values():
+            if amount < 0:
+                return False
+        storeATMbillsToFile(toATMfile)
+        for key, val in dictOfMoneyToClient.items():
+            if val != 0:
+                print(f"ATM prestnted {val} X {key} UAH")
+        return(True)
+    pass
+
+
 def getMoney(username):
     curBalance = getBalance(username)
     while True:
@@ -198,11 +300,11 @@ def getMoney(username):
         if curBalance < amount:
             print(f"you can't get {amount} you have only {curBalance}")
         else:
-            with open(f"{username}_balance.data", 'w') as file:
-                file.write(str(curBalance - amount))
-            print(f"you has got {amount} UAH")
-            operationToJson(username, "got money", amount)
-            break
+            if getMoneyFromATMtoClient(amount):
+                changeUserBalance(username, curBalance, amount)
+                break
+            else:
+                print("We have no this amount, pls try other one...")
 
 
 def showHistory(username):
@@ -213,26 +315,17 @@ def showHistory(username):
             print(f"You {params['operation']} {params['amount']} UAH, your balance is {params['new_balance']}")
 
 
-atm = dict()
-cassetteNum = (1, 2, 3, 4)
-
-
 def getBalanceATM():
     try:
         with open("atm") as file:
             reader = csv.DictReader(file, delimiter="|")
             billsDict = dict(list(reader)[0])
             return sum(int(b) * int(d) for b, d in billsDict.items())
+    except FileNotFoundError:
+        file = open("atm", 'w')
+        file.close()
     except IndexError:
         return 0
-
-
-#atm = {10:111,20:222,50:333,100:101}
-def storeATMbillsToFile(atmDict):
-    with open("atm", 'w') as file:
-        atmWriter = csv.DictWriter(file, fieldnames=list(atm.keys()), delimiter='|')
-        atmWriter.writeheader()
-        atmWriter.writerow(atm)
 
 
 def addBillsATM():
@@ -251,9 +344,7 @@ def addBillsATM():
                 atm.setdefault(d)
                 print(f"you add denomination {d} in {i} cassette: ")
                 break
-    
 
-#addBillsATM()
 
 def addMoneyATM():
     if not atm or not len(atm.keys()):
@@ -274,7 +365,7 @@ def addMoneyATM():
         storeATMbillsToFile(atm)
         operationToJson("admin", "added money", getBalanceATM())
 
-#addMoneyATM()
+
 def isUsContinue():
     if input("press 1 to continue or any for exit ") == '1':
         return True
@@ -358,4 +449,4 @@ def start():
     print("THANK YOU FOR USING OUR BANK!!! ... or not)))")
 
 
-#start()
+start()
