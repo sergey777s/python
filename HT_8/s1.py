@@ -66,6 +66,7 @@ atm = dict()
 cassetteNum = (1, 2, 3, 4)
 
 
+
 def cleanScreen():
     print("\n" * 100)
 
@@ -275,16 +276,24 @@ def getMoneyFromATMtoClient(money):
         billsAmounts = dict(next(csvReader))
     billAmmATM = dict()
     for key, val in billsAmounts.items():
-        billAmmATM[int(key)] = int(val)
+        if val != '0':
+            billAmmATM[int(key)] = int(val)
     denomsATM = list(billAmmATM.keys())
     dictOfMoneyToClient = getDictOfMoneyToPresent(money, denomsATM)
     if sum(dictOfMoneyToClient.values()) == 0:
         return False
     else:
         toATMfile = {key:billAmmATM[key]-dictOfMoneyToClient[key] for key in billAmmATM}
-        for amount in toATMfile.values():
+        for key, amount in toATMfile.items():
             if amount < 0:
-                return False
+                denomsATM.remove(key)
+                tmpKey = key
+                tmpVal = billAmmATM[key]
+                billAmmATM.pop(key,0)
+                dictOfMoneyToClient = getDictOfMoneyToPresent(money, denomsATM)
+                toATMfile = {key:billAmmATM[key] - dictOfMoneyToClient[key] for key in billAmmATM}
+                toATMfile[key] += abs(amount)
+                toATMfile.update({tmpKey : tmpVal})
         storeATMbillsToFile(toATMfile)
         for key, val in dictOfMoneyToClient.items():
             if val != 0:
@@ -373,8 +382,11 @@ def isUsContinue():
         return False
 
 
-def startAdmin():
+def startAdmin():   
+    needExit = False
     while True:
+        if needExit:
+            break
         showMenuAdmin()
         adminChoice = getUserChoose()
         if adminChoice == 1:
@@ -403,17 +415,22 @@ def startAdmin():
             else:
                 break
         else:
+            needExit = True
             break
         print("THANK YOU FOR USING OUR BANK!!! ... or not)))")
     pass
 
 
 def start():
+    needExit = False
     cleanScreen()
     username = getLoginFromUser()
     if username == "admin":
         startAdmin()
+        needExit = True
     while True:
+        if needExit:
+            break
         showMenu()
         userChoice = getUserChoose()
         if userChoice == 1:
@@ -447,6 +464,5 @@ def start():
         else:
             break
     print("THANK YOU FOR USING OUR BANK!!! ... or not)))")
-
 
 start()
