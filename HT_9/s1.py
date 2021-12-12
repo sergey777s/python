@@ -60,11 +60,13 @@
    До того ж, скоріш за все, вам прийдеться і так багато чого переписати.
 """
 
-import os, datetime, json, csv
+import os, datetime, json, csv, sqlite3
 from json.decoder import JSONDecodeError
 atm = dict()
 cassetteNum = (1, 2, 3, 4)
-
+conn = sqlite3.connect("DB.db")
+cursor = conn.cursor()
+dbMode = True
 
 
 def cleanScreen():
@@ -85,7 +87,21 @@ def isFileExists(fileName):
     return os.path.isfile(f"./{fileName}")
 
 
+def addUserAndPwdToDB(username, password):
+    try:
+        cursor.execute("""CREATE TABLE users
+                   (user text PRIMARY KEY, password text)
+                   """)
+    except sqlite3.OperationalError:
+        pass
+    cursor.execute("""INSERT INTO users
+                       VALUES(?,?)""", (username, password))
+    conn.commit()
+
+
 def addUserAndPwdToFile(username, password):
+    if dbMode:
+        return addUserAndPwdToDB(username, password)
     if isFileExists("users.data"):
         file = open("users.data", 'a')
         file.write(f"{username},{password}\n")
@@ -96,7 +112,30 @@ def addUserAndPwdToFile(username, password):
         file.close
 
 
+def isUserPwdInDB(user, password=''):
+    if password == '':
+        try:
+            cursor.execute("""SELECT * FROM users WHERE user=?;""", (user,))
+            if cursor.fetchone() is None:
+                return False
+            else:
+                return True
+        except sqlite3.OperationalError:  # no table users
+            return False
+    try:
+        cursor.execute("""SELECT * FROM users
+                       WHERE user=? AND password=?""", (user, password))
+        if cursor.fetchone() == (str(user), str(password)):
+            return True
+        else:
+            return False
+    except sqlite3.OperationalError:  # no table users
+        return False
+
+
 def isUserPwdInFile(user, password=''):
+    if dbMode:
+        return isUserPwdInDB(user, password='')
     if isFileExists("users.data"):
         if password == '':
             with open("users.data") as file:
@@ -113,12 +152,38 @@ def isUserPwdInFile(user, password=''):
         return False
 
 
+def createBalanceDB(username):
+    cursor.execute("""CREATE TABLE IF NOT EXISTS balance
+                   (user text PRIMARY KEY, balance integer)""")
+    cursor.execute("""INSERT INTO balance(user, balance)
+    VALUES (?, ?)""", (username, 0))
+    conn.commit()
+
+
 def createBalanceFile(username):
+    if dbMode:
+        return createBalanceDB(username)
     with open(f"{username}_balance.data", 'w') as f:
         f.write("0")
 
 
+def createTransactionsDB(username):
+    cursor.execute("""CREATE TABLE IF NOT EXISTS transactions
+                   (date text,
+                   user text,
+                   operation text,
+                   amount integer,
+                   new_balance integer)""")
+    cursor.execute("""INSERT INTO transactions
+                   (date, user, operation, amount, new_balance)
+    VALUES(?, ?, ?, ?, ?)""",
+    (datetime.datetime.now().isoformat()[:10], username, "user registered", 0, 0))
+    conn.commit()
+
+
 def createTransactionsFile(username):
+    if dbMode:
+        return createTransactionsDB(username)
     f = open(f"{username}_transactions.data", 'w')
     f.close
 
@@ -176,13 +241,40 @@ def getUserChoose():
             return choose
 
 
+def getBalanceDB(username):
+    cursor.execute("""SELECT balance FROM balance WHERE user=?""", (username,))
+    return int(cursor.fetchone()[0])
+
+
 def getBalance(username):
+    if dbMode:
+        return getBalanceDB(username)
     with open(f"{username}_balance.data") as file:
         balance = int(file.readline())
         return balance
 
 
+def operationToDB(user, operation, amount):
+    if user == "admin" and operation == "removed money":
+        balance = 0
+    elif user == "admin":
+        balance = getBalanceATM()
+    else:
+        balance = getBalance(user)
+    cursor.execute("""INSERT INTO transactions
+                   (date, user, operation, amount, new_balance)
+                   VALUES (?,?,?,?,?)""",
+                   (datetime.datetime.now().isoformat()[:10],
+                    user,
+                    operation,
+                    amount,
+                    balance))
+    conn.commit()
+
+
 def operationToJson(user, operation, amount):
+    if dbMode:
+        return operationToDB(user, operation, amount)
     if user == "admin" and operation == "removed money":
         balance = 0
     elif user == "admin":
@@ -190,9 +282,11 @@ def operationToJson(user, operation, amount):
     else:
         balance = getBalance(user)
     toJson = {datetime.datetime.now().isoformat():
-              {"operation": operation,
+              {
+              "operation": operation,
               "amount": amount,
-              "new_balance": balance}}
+              "new_balance": balance}
+              }
 
     curData = ''
     with open(f"{user}_transactions.data")as jfile:
@@ -206,7 +300,19 @@ def operationToJson(user, operation, amount):
                 jfile.write(json.dumps(curData))
 
 
+def addMoneyToDB(username):
+    moneyFromUs = int(input("how many money you add: "))
+    curBalance = getBalance(username)
+    cursor.execute("""UPDATE balance
+    SET balance=?
+    WHERE user=?""", (curBalance+moneyFromUs, username))
+    conn.commit()
+    operationToDB(username, "added money", moneyFromUs)
+
+
 def addMoney(username):
+    if dbMode:
+        return addMoneyToDB(username)
     moneyFromUs = int(input("how many money you add: "))
     curBalance = getBalance(username)
     with open(f"{username}_balance.data", 'w') as file:
@@ -215,7 +321,17 @@ def addMoney(username):
     operationToJson(username, "added money", moneyFromUs)
 
 
+def changeUserBalanceInDB(username, curBalance, amount):
+    cursor.execute("""UPDATE balance
+                   SET balance=?
+                   WHERE user=?""", (curBalance-amount, username))
+    conn.commit()
+    operationToDB(username, "got money", amount)
+
+
 def changeUserBalance(username, curBalance, amount):
+    if dbMode:
+        return changeUserBalanceInDB(username, curBalance, amount)
     with open(f"{username}_balance.data", 'w') as file:
         file.write(str(curBalance - amount))
     print(f"you has got {amount} UAH")
@@ -235,16 +351,25 @@ def getDictOfMoneyToPresent(cashNeedToPresent, listOfBillsInATM):
     curLoop = 0
     try:
         for curDen in listOfBillsInATM:
-            if curLoop == len(listOfBillsInATM)-1 and cashNeedToPresent % curDen == 0:
+            if curLoop == len(
+                    listOfBillsInATM) - 1 and cashNeedToPresent % curDen == 0:
                 present[curDen] = int(cashNeedToPresent / curDen)
                 cashNeedToPresent = 0
                 break
             if cashNeedToPresent == 0:
                 break
-            if cashNeedToPresent // curDen > 0 and isCanPresentAll(cashNeedToPresent - curDen, listOfBillsInATM[curLoop+1:]):
+            if cashNeedToPresent // curDen > 0 and isCanPresentAll(
+                    cashNeedToPresent - curDen, listOfBillsInATM[curLoop+1:]):
                 present[curDen] = cashNeedToPresent // curDen
                 cashNeedToPresent = cashNeedToPresent % curDen
-            elif cashNeedToPresent // curDen > 0 and (isCanPresentAll(cashNeedToPresent - listOfBillsInATM[curLoop], listOfBillsInATM[curLoop+1:]) or isCanPresentAll(cashNeedToPresent - listOfBillsInATM[curLoop] - listOfBillsInATM[curLoop + 1], listOfBillsInATM[curLoop+2:])):
+            elif cashNeedToPresent // curDen > 0 and (
+                    isCanPresentAll(
+                            cashNeedToPresent - listOfBillsInATM[curLoop],
+                            listOfBillsInATM[curLoop+1:]) or isCanPresentAll(
+                                    cashNeedToPresent -
+                                    listOfBillsInATM[curLoop] -
+                                    listOfBillsInATM[curLoop + 1],
+                                    listOfBillsInATM[curLoop+2:])):
                 present[curDen] = cashNeedToPresent // curDen
                 cashNeedToPresent = cashNeedToPresent % curDen
                 present[listOfBillsInATM[curLoop-1]] = cashNeedToPresent // curDen
@@ -257,23 +382,49 @@ def getDictOfMoneyToPresent(cashNeedToPresent, listOfBillsInATM):
         for i in present.keys():
             present[i] = 0
     for i in present.keys():
-        if present[i] == None:
+        if present[i] is None:
             present[i] = 0
     return present
 
 
+def storeATMbillsToDB(atmDict):
+    cursor.execute("""CREATE TABLE IF NOT EXISTS atm
+                   (denoms integer PRIMARY KEY, amount integer)""")
+    for item in atmDict.items():
+        cursor.execute("""INSERT OR REPLACE INTO atm(denoms, amount)
+        VALUES (?, ?)""", (item))
+        conn.commit()
+
+
 def storeATMbillsToFile(atmDict):
+    if dbMode:
+        return storeATMbillsToDB(atmDict)
     with open("atm", 'w') as file:
-        atmWriter = csv.DictWriter(file, fieldnames=list(atmDict.keys()), delimiter='|')
+        atmWriter = csv.DictWriter(
+                file, fieldnames=list(atmDict.keys()), delimiter='|')
         atmWriter.writeheader()
         atmWriter.writerow(atmDict)
 
 
-def getMoneyFromATMtoClient(money):
+def getDictFromATMinDB():
+    billsAmounts = dict()
+    cursor.execute("""SELECT * FROM atm""")
+    billsAmounts = dict(cursor.fetchall())
+    return billsAmounts
+
+
+def getDictFromATMfile():
+    if dbMode:
+        return getDictFromATMinDB()
     billsAmounts = dict()
     with open("atm", 'r') as file:
         csvReader = csv.DictReader(file, delimiter='|')
         billsAmounts = dict(next(csvReader))
+        return billsAmounts
+
+
+def getMoneyFromATMtoClient(money):
+    billsAmounts = getDictFromATMfile()
     billAmmATM = dict()
     for key, val in billsAmounts.items():
         if val != '0':
@@ -283,18 +434,24 @@ def getMoneyFromATMtoClient(money):
     if sum(dictOfMoneyToClient.values()) == 0:
         return False
     else:
-        toATMfile = {key:billAmmATM[key]-dictOfMoneyToClient[key] for key in billAmmATM}
+        toATMfile = {
+                key: billAmmATM[key] - dictOfMoneyToClient[key]
+                for key in billAmmATM}
+
         for key, amount in toATMfile.items():
             if amount < 0:
                 try:
                     denomsATM.remove(key)
                     tmpKey = key
                     tmpVal = billAmmATM[key]
-                    billAmmATM.pop(key,0)
-                    dictOfMoneyToClient = getDictOfMoneyToPresent(money, denomsATM)
-                    toATMfile = {key:billAmmATM[key] - dictOfMoneyToClient[key] for key in billAmmATM}
+                    billAmmATM.pop(key, 0)
+                    dictOfMoneyToClient = getDictOfMoneyToPresent(
+                            money, denomsATM)
+                    toATMfile = {
+                            key: billAmmATM[key] - dictOfMoneyToClient[key]
+                            for key in billAmmATM}
                     toATMfile[key] += abs(amount)
-                    toATMfile.update({tmpKey : tmpVal})
+                    toATMfile.update({tmpKey: tmpVal})
                 except KeyError:
                     return False
         storeATMbillsToFile(toATMfile)
@@ -302,7 +459,6 @@ def getMoneyFromATMtoClient(money):
             if val != 0:
                 print(f"ATM prestnted {val} X {key} UAH")
         return(True)
-    pass
 
 
 def getMoney(username):
@@ -319,7 +475,19 @@ def getMoney(username):
                 print("We have no this amount, pls try other one...")
 
 
+def showHistoryInDB(username):
+    cursor.execute("""SELECT * FROM transactions WHERE user=?""", (username,))
+    for transactList in cursor.fetchall():
+        print(transactList[0])
+        if transactList[2] == "user registered":
+            print("user registered")
+        else:
+            print(f"You {transactList[2]} {transactList[3]} UAH, your balance is {transactList[4]}")
+
+
 def showHistory(username):
+    if dbMode:
+        return showHistoryInDB(username)
     with open(f"{username}_transactions.data") as jfile:
         jset = json.load(jfile)
         for operDate, params in jset.items():
@@ -327,7 +495,23 @@ def showHistory(username):
             print(f"You {params['operation']} {params['amount']} UAH, your balance is {params['new_balance']}")
 
 
+def getBalanceATMinDB():
+    try:
+        cursor.execute("""SELECT * FROM atm""")
+    except sqlite3.OperationalError:
+        print("add money first")
+        return 0
+    result = 0
+    for i in cursor.fetchall():
+        result += i[0] * i[1]
+    if result == "":
+        return 0
+    return result
+
+
 def getBalanceATM():
+    if dbMode:
+        return getBalanceATMinDB()
     try:
         with open("atm") as file:
             reader = csv.DictReader(file, delimiter="|")
@@ -367,7 +551,8 @@ def addMoneyATM():
         print("-==Money ADD setup==-")
         for denomination in list(atm.keys()):
             while True:
-                amount = abs(int(input(f"input amount of bills, denomination is {denomination} : ")))
+                amount = abs(int(
+                        input(f"input amount of bills, denomination is {denomination} : ")))
                 if input(f"you entered {amount} bills, type 'yes' if confirm: ") == "yes":
                     break
                 else:
@@ -385,7 +570,7 @@ def isUsContinue():
         return False
 
 
-def startAdmin():   
+def startAdmin():
     needExit = False
     while True:
         if needExit:
@@ -467,5 +652,6 @@ def start():
         else:
             break
     print("THANK YOU FOR USING OUR BANK!!! ... or not)))")
+
 
 start()
