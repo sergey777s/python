@@ -338,13 +338,14 @@ def changeUserBalance(username, curBalance, amount):
     operationToJson(username, "got money", amount)
 
 
-def getDictOfMoneyToPresent(cashNeedToPresent, listOfBillsInATM):
+def getDictOfMoneyToPresent(cashNeedToPresent, dictOfBillsInATM):
+    listOfBillsInATM = list(dictOfBillsInATM.keys())
     listOfBillsInATM.sort(reverse=True)
     present = dict.fromkeys(listOfBillsInATM)
 
     def isCanPresentAll(cashToPresent, listOfDenoms):
         for i in listOfDenoms:
-            if cashToPresent % i == 0:
+            if cashToPresent % i == 0 and cashToPresent <= dictOfBillsInATM[i] * i and cashToPresent >= 0:
                 return True
         return False
 
@@ -390,6 +391,8 @@ def getDictOfMoneyToPresent(cashNeedToPresent, listOfBillsInATM):
 def storeATMbillsToDB(atmDict):
     cursor.execute("""CREATE TABLE IF NOT EXISTS atm
                    (denoms integer PRIMARY KEY, amount integer)""")
+    cursor.execute("""DELETE FROM atm""")
+    conn.commit()
     for item in atmDict.items():
         cursor.execute("""INSERT OR REPLACE INTO atm(denoms, amount)
         VALUES (?, ?)""", (item))
@@ -430,7 +433,7 @@ def getMoneyFromATMtoClient(money):
         if val != '0':
             billAmmATM[int(key)] = int(val)
     denomsATM = list(billAmmATM.keys())
-    dictOfMoneyToClient = getDictOfMoneyToPresent(money, denomsATM)
+    dictOfMoneyToClient = getDictOfMoneyToPresent(money, billAmmATM)
     if sum(dictOfMoneyToClient.values()) == 0:
         return False
     else:
@@ -446,7 +449,7 @@ def getMoneyFromATMtoClient(money):
                     tmpVal = billAmmATM[key]
                     billAmmATM.pop(key, 0)
                     dictOfMoneyToClient = getDictOfMoneyToPresent(
-                            money, denomsATM)
+                            money, billAmmATM)
                     toATMfile = {
                             key: billAmmATM[key] - dictOfMoneyToClient[key]
                             for key in billAmmATM}
