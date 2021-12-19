@@ -8,21 +8,28 @@ import requests
 import json
 
 
+j = json
+
+
 def getCurrencyUrl(date):
     return "https://api.privatbank.ua/p24api/exchange_rates?json&date=" + date
 
 
-def getCurrencyList():
+def getJsonAfterRequest():
     try:
         req = requests.get(
                 getCurrencyUrl(datetime.datetime.now().strftime("%d.%m.%Y")))
         j = json.loads(req.text)
-        result = list()
-        for curDic in j["exchangeRate"][1:]:
-            result.append(curDic["currency"])
-        return result
+        return j
     except requests.exceptions.RequestException:
-        return []
+        return None
+
+
+def getCurrencyList():
+    result = list()
+    for curDic in j["exchangeRate"][1:]:
+        result.append(curDic["currency"])
+    return result
 
 
 def getCurrencyFromUs():
@@ -40,15 +47,9 @@ def getCurrencyFromUs():
 
 
 def getCurrencyNbuRateOnDate(currency, date, nameOfOperation):
-    try:
-        req = requests.get(getCurrencyUrl(date))
-        j = json.loads(req.text)
-        for curDic in j["exchangeRate"][1:]:
-            if curDic["currency"] == currency:
-                return curDic[nameOfOperation]
-    except requests.exceptions.RequestException:
-        print("connection error, trying again...")
-        return getCurrencyNbuRateOnDate(currency, date)
+    for curDic in j["exchangeRate"][1:]:
+        if curDic["currency"] == currency:
+            return curDic[nameOfOperation]
 
 
 def converter(currency1, amount, currency2):
@@ -60,12 +61,17 @@ def converter(currency1, amount, currency2):
 
 
 def start():
-    print("Input first currency for sale: ")
-    cur1 = getCurrencyFromUs()
-    amount = abs(int(input("what amount you want to exchange: ")))
-    print("Input last currency for buy: ")
-    cur2 = getCurrencyFromUs()
-    print(f"you get: {converter(cur1, amount, cur2)} {cur2}")
+    global j
+    j = getJsonAfterRequest()
+    if j is None:
+        print("system not responding, please execute after some time")
+    else:
+        print("Input first currency for sale: ")
+        cur1 = getCurrencyFromUs()
+        amount = abs(int(input("what amount you want to exchange: ")))
+        print("Input last currency for buy: ")
+        cur2 = getCurrencyFromUs()
+        print(f"you get: {converter(cur1, amount, cur2)} {cur2}")
 
 
 start()

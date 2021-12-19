@@ -41,7 +41,7 @@ atm = dict()
 cassetteNum = (1, 2, 3, 4)
 conn = sqlite3.connect("DB.db")
 cursor = conn.cursor()
-dbMode = True
+dbMode = False
 
 
 def cleanScreen():
@@ -474,6 +474,9 @@ def showHistory(username):
             print(f"You {params['operation']} {params['amount']} UAH, your balance is {params['new_balance']}")
 
 
+afterBalanceCassetesAmount = dict()
+
+
 def getBalanceATMinDB():
     try:
         cursor.execute("""SELECT * FROM atm""")
@@ -482,6 +485,7 @@ def getBalanceATMinDB():
         return 0
     result = 0
     for i in cursor.fetchall():
+        afterBalanceCassetesAmount[i[0]] = i[1]
         result += i[0] * i[1]
     if result == "":
         return 0
@@ -495,6 +499,8 @@ def getBalanceATM():
         with open("atm") as file:
             reader = csv.DictReader(file, delimiter="|")
             billsDict = dict(list(reader)[0])
+            global afterBalanceCassetesAmount
+            afterBalanceCassetesAmount = billsDict
             return sum(int(b) * int(d) for b, d in billsDict.items())
     except FileNotFoundError:
         file = open("atm", 'w')
@@ -559,6 +565,8 @@ def startAdmin():
         if adminChoice == 1:
             print("Total balance of wincore nixdorf is: ")
             print(str(getBalanceATM()) + " UAH")
+            for i in afterBalanceCassetesAmount.items():
+                print(f"In cassete with denominal {i[0]} amount is {i[1]}")
             if isUsContinue():
                 continue
             else:
