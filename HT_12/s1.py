@@ -14,10 +14,12 @@ import requests
 import csv
 import sqlite3
 
-url = "http://quotes.toscrape.com/"
+
+def getUrlRoot():
+    return "http://quotes.toscrape.com"
 
 
-def getResponse(url):
+def getResponse(url=getUrlRoot()):
     try:
         resp = requests.get(url)
         return resp
@@ -29,10 +31,6 @@ def getSoup(url):
     resp = getResponse(url)
     soup = BeautifulSoup(resp.text, "lxml")
     return soup
-
-
-def getUrlRoot():
-    return "http://quotes.toscrape.com"
 
 
 allQuotesData = list()
@@ -86,7 +84,7 @@ def parseAllPagesFrom(url):
 
 
 def writeToCsv(dic):
-    with open("quotesBase.csv", 'w') as csvFile:
+    with open("quotesBase.csv", 'w', encoding="utf-8") as csvFile:
         csvWriter = csv.DictWriter(
                 csvFile, fieldnames=dic[0].keys(), delimiter="|")
         csvWriter.writeheader()
