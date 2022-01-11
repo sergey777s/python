@@ -26,5 +26,5 @@ class Oval(Figure):
 class Square(Figure):
     def __init__(self, side, color):
         self.side = side
-        Figure.__init__(self, color)
+        super.__init__(self, color)
 

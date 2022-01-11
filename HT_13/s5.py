@@ -47,7 +47,7 @@ class SchoolLibrary(object):
             self.journal[nameOfBook][pupilName]["returned"] = True
         except KeyError:
             print("write name of book correctly! ")
-            return self.getBookFromPupil(self, nameOfBook, pupilName)
+            return self.getBookFromPupil(nameOfBook, pupilName)
 
 
 def getNameOfBook():
