@@ -7,7 +7,7 @@ import scrapy
 
 
 class VikkaItem(scrapy.Item):
-    tittle = scrapy.Field()
+    title = scrapy.Field()
     newsDescription = scrapy.Field()
     tags = scrapy.Field()
     url = scrapy.Field()
