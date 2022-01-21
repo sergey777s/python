@@ -39,7 +39,7 @@ class VikanewsSpider(scrapy.Spider):
     def parsePage(response):
         peaceOfNewsText = ""
         tags = ""
-        for pieceOfNews in response.css("div.entry-content.-margin-b p::text"):
+        for pieceOfNews in response.css("div.entry-content.-margin-b ::text"):
             peaceOfNewsText += pieceOfNews.get()
         for tag in response.css("div.entry-tags.tags-margin a::text"):
             tags += "#" + tag.get() + ", "
