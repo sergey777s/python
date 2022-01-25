@@ -30,4 +30,3 @@ chr.find_element(
     By.CSS_SELECTOR, ".appsMaterialWizButtonPaperbuttonLabel.quantumWizButtonPaperbuttonLabel.exportLabel").click()
 chr.save_screenshot("push.jpg")
 chr.close()
-
