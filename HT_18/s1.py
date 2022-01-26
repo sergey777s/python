@@ -21,18 +21,32 @@ askstories, showstories, newstories, jobstories
 """
 
 import requests
+import argparse
 import json
 from csv import DictWriter
 
 
 def getCategoryFromUs():
-    category = input("write category from askstories, showstories, newstories, jobstories: ")
-    if len(category) == 0:
+    apars = argparse.ArgumentParser(description="write category from askstories, showstories, newstories, jobstories:")
+    apars.add_argument("n", nargs='?', default="1")
+    group = apars.add_mutually_exclusive_group()
+    group.add_argument("--askstories", action="store_true")
+    group.add_argument("--showstories", action="store_true")
+    group.add_argument("--newstories", action="store_true")
+    group.add_argument("--jobstories", action="store_true")
+    args = apars.parse_args()
+    if args.n == "1":
+        if args.askstories:
+            return "askstories"
+        if args.showstories:
+            return "showstories"
+        if args.newstories:
+            return "newstories"
+        if args.jobstories:
+            return "jobstories"
         return "newstories"
-    elif category in ("askstories", "showstories", "newstories", "jobstories"):
-        return category
     else:
-        print("wrong category")
+        print("wrong key")
 
 
 def getItems(category='newstories'):
@@ -86,7 +100,7 @@ def start():
         print("processing ... ")
         for item in getItems(category):
             dictWriter.writerow(getItemDict(item))
-        file.close()
 
 
-start()
+
+#start()
