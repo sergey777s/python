@@ -102,5 +102,4 @@ def start():
             dictWriter.writerow(getItemDict(item))
 
 
-
-#start()
+start()
