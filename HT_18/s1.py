@@ -23,6 +23,7 @@ askstories, showstories, newstories, jobstories
 import requests
 import argparse
 import json
+import pickle
 from csv import DictWriter
 
 
@@ -57,6 +58,21 @@ def getItems(category='newstories'):
     else:
         return[]
 
+def writeItemsDictToFile(dict):
+    with open("items.save", "a+b") as file:
+        pickle.dump(dict, file)
+
+
+def loadItemsDictFromFile():
+    with open("items.save", "rb") as file:
+        while True:
+            try:
+                yield pickle.load(file)
+            except EOFError:
+                file = open("items.save", "w")
+                file.close()
+                break
+
 
 def getAvailableFields(item):
     url = f"https://hacker-news.firebaseio.com/v0/item/{item}.json"
@@ -64,6 +80,7 @@ def getAvailableFields(item):
     fields = list()
     if resp.status_code == 200:
         fields = dict(json.loads(resp.text)).keys()
+        writeItemsDictToFile(dict(json.loads(resp.text)))
         return fields
     else:
         return []
@@ -98,8 +115,10 @@ def start():
         dictWriter = DictWriter(file, fieldnames=headerFields)
         dictWriter.writeheader()
         print("processing ... ")
-        for item in getItems(category):
-            dictWriter.writerow(getItemDict(item))
+        for dict in loadItemsDictFromFile():
+            dictWriter.writerow(dict)
+        # for item in getItems(category):
+        #     dictWriter.writerow(getItemDict(item))
 
 
 start()
