@@ -58,6 +58,7 @@ def getItems(category='newstories'):
     else:
         return[]
 
+
 def writeItemsDictToFile(dict):
     with open("items.save", "a+b") as file:
         pickle.dump(dict, file)
